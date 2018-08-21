@@ -89,8 +89,8 @@ public class ApiReflection {
 				if(isNotValueObject) {
 					map.put(field.getName(), mapSetDefaultValue(field));
 				}
-				//屬性為Collection
-				else if(Collection.class.isAssignableFrom(field.getType())) {
+				//屬性為Collection or 屬性為陣列
+				else if(Collection.class.isAssignableFrom(field.getType()) || field.getType().isArray()) {
 					map.put(field.getName(), mapSetDefaultValue(field));
 				}
 				//屬性為Value Object
@@ -114,11 +114,21 @@ public class ApiReflection {
 	 * @throws JSONException
 	 */
 	@SuppressWarnings("unchecked")
-	static private <E, T> Object mapSetDefaultValue(Field field) throws InstantiationException, IllegalAccessException, JSONException {
+	static private <T> Object mapSetDefaultValue(Field field) throws InstantiationException, IllegalAccessException, JSONException {
+		//字串類型
+		if(String.class.isAssignableFrom(field.getType())) {
+			return "string";
+		}
+		//數字類型
+		if(Number.class.isAssignableFrom(field.getType())) {
+			return 0;
+		}
+		//若此屬性為Collection類型
 		if(Collection.class.isAssignableFrom(field.getType())) {
-			
+			//取得實際化參數類型(為了判斷可能出現之泛型)
 			ParameterizedType paramType = (ParameterizedType) field.getGenericType();
-	        Class<E> typeClass = (Class<E>) paramType.getActualTypeArguments()[0];
+			//取得CLASS
+	        Class<T> typeClass = (Class<T>) paramType.getActualTypeArguments()[0];
 	        if(String.class.isAssignableFrom(typeClass)) {
 	        	return new String[] {"string", "string"};
 	        }
@@ -134,11 +144,24 @@ public class ApiReflection {
 	        	return obj;
 	        }
 		}
-		if(String.class.isAssignableFrom(field.getType())) {
-			return "string";
-		}
-		if(Number.class.isAssignableFrom(field.getType())) {
-			return 0;
+		//若屬性為Array
+		if(field.getType().isArray()) {
+			Class<T> typeClass = (Class<T>) field.getGenericType();
+			Class<?> arrayType = typeClass.getComponentType();
+			if(String.class.isAssignableFrom(arrayType)) {
+		        	return new String[] {"string", "string"};
+	        }
+	        else if(Number.class.isAssignableFrom(arrayType)) {
+	        	return new Integer[] {0, 0};
+	        }
+	        else {
+	        	//取得該class的fields 並跑迴圈將底下所有屬性RUN過
+	        	Field[] fields = arrayType.getDeclaredFields();
+	        	Object[] obj = new Object[2];
+	        	obj[0] = searchField(fields, new HashMap<>());
+	        	obj[1] = searchField(fields, new HashMap<>());
+	        	return obj;
+	        }
 		}
 		return null;
 	}
