@@ -11,6 +11,8 @@ public class CustomerInfoInput {
 	private TestVO testVO;
 	private List<String> testList;
 	private List<TestVO> testVOList;
+	private TestVO[] voArray;
+	
 
 	public String getId() {
 		return id;
@@ -51,4 +53,13 @@ public class CustomerInfoInput {
 	public void setTestVOList(List<TestVO> testVOList) {
 		this.testVOList = testVOList;
 	}
+
+	public TestVO[] getVoArray() {
+		return voArray;
+	}
+
+	public void setVoArray(TestVO[] voArray) {
+		this.voArray = voArray;
+	}
+	
 }

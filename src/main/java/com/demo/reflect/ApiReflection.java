@@ -21,7 +21,11 @@ import com.demo.annotation.vo.ApiModuleVO;
 import com.demo.annotation.vo.ApiVO;
 
 public class ApiReflection {
-
+	//Array and VO 預設值的數量
+	static final Integer COLLECTION_ARRAY_DEFAULT_VALUE_COUNT = 2;
+	static final String STRING_DEFAULT_VALUE = "string";
+	static final Number NUMBER_DEFAULT_VALUE = 0;
+	
 	static public ApiVO apiInfo() {
 		ApiVO apiVO = new ApiVO();
 		try {
@@ -129,40 +133,48 @@ public class ApiReflection {
 			ParameterizedType paramType = (ParameterizedType) field.getGenericType();
 			//取得CLASS
 	        Class<T> typeClass = (Class<T>) paramType.getActualTypeArguments()[0];
-	        if(String.class.isAssignableFrom(typeClass)) {
-	        	return new String[] {"string", "string"};
-	        }
-	        else if(Number.class.isAssignableFrom(typeClass)) {
-	        	return new Integer[] {0, 0};
-	        }
-	        else {
-	        	//取得該class的fields 並跑迴圈將底下所有屬性RUN過
-	        	Field[] fields = typeClass.getDeclaredFields();
-	        	Object[] obj = new Object[2];
-	        	obj[0] = searchField(fields, new HashMap<>());
-	        	obj[1] = searchField(fields, new HashMap<>());
-	        	return obj;
-	        }
+	        return judgClassTypeSetDefaultValue(typeClass);
 		}
 		//若屬性為Array
 		if(field.getType().isArray()) {
 			Class<T> typeClass = (Class<T>) field.getGenericType();
 			Class<?> arrayType = typeClass.getComponentType();
-			if(String.class.isAssignableFrom(arrayType)) {
-		        	return new String[] {"string", "string"};
-	        }
-	        else if(Number.class.isAssignableFrom(arrayType)) {
-	        	return new Integer[] {0, 0};
-	        }
-	        else {
-	        	//取得該class的fields 並跑迴圈將底下所有屬性RUN過
-	        	Field[] fields = arrayType.getDeclaredFields();
-	        	Object[] obj = new Object[2];
-	        	obj[0] = searchField(fields, new HashMap<>());
-	        	obj[1] = searchField(fields, new HashMap<>());
-	        	return obj;
-	        }
+			return judgClassTypeSetDefaultValue(arrayType);
 		}
 		return null;
+	}
+	
+	/**
+	 * 依照常數數量給定預設值數量
+	 * @param clazz
+	 * @return
+	 * @throws InstantiationException
+	 * @throws IllegalAccessException
+	 * @throws JSONException
+	 */
+	static private Object judgClassTypeSetDefaultValue(Class<?> clazz) throws InstantiationException, IllegalAccessException, JSONException {
+		if(String.class.isAssignableFrom(clazz)) {
+			String[] strArray = new String[COLLECTION_ARRAY_DEFAULT_VALUE_COUNT];
+			for(int i = 0 ; i < strArray.length; i++) {
+				strArray[i] = STRING_DEFAULT_VALUE;
+			}
+        	return strArray;
+	    }
+	    else if(Number.class.isAssignableFrom(clazz)) {
+	    	Number[] intArray = new Number[COLLECTION_ARRAY_DEFAULT_VALUE_COUNT];
+			for(int i = 0 ; i < intArray.length; i++) {
+				intArray[i] = NUMBER_DEFAULT_VALUE;
+			}
+        	return intArray;
+	    }
+	    else {
+	    	//取得該class的fields 並跑迴圈將底下所有屬性RUN過
+	    	Field[] fields = clazz.getDeclaredFields();
+	    	Object[] objArray = new Object[COLLECTION_ARRAY_DEFAULT_VALUE_COUNT];
+			for(int i = 0 ; i < objArray.length; i++) {
+				objArray[i] = searchField(fields, new HashMap<>());
+			}
+	    	return objArray;
+	    }
 	}
 }

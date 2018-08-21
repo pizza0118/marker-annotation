@@ -7,6 +7,7 @@ public class TestVO {
 	private Double doubleNum;
 	private Float floatNum;
 	private Long longNum;
+	private TestVO2 vo2;
 	
 	public String getName() {
 		return name;
@@ -38,6 +39,10 @@ public class TestVO {
 	public void setLongNum(Long longNum) {
 		this.longNum = longNum;
 	}
-	
-	
+	public TestVO2 getVo2() {
+		return vo2;
+	}
+	public void setVo2(TestVO2 vo2) {
+		this.vo2 = vo2;
+	}
 }
