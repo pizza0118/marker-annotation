@@ -1,0 +1,145 @@
+package com.demo.reflect;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
+import org.json.JSONException;
+import org.reflections.Reflections;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+import com.demo.annotation.ApiInfo;
+import com.demo.annotation.ApiModule;
+import com.demo.annotation.vo.ApiInfoVO;
+import com.demo.annotation.vo.ApiModuleVO;
+import com.demo.annotation.vo.ApiVO;
+
+public class ApiReflection {
+
+	static public ApiVO apiInfo() {
+		ApiVO apiVO = new ApiVO();
+		try {
+			//載入專案所有class
+			Reflections reflections = new Reflections("");
+			//取得有@ApiModule標記之Class
+			Set<Class<?>> apiModuleClasses = reflections.getTypesAnnotatedWith(ApiModule.class);
+			//取得有@ApiInfo標記之method
+			for(Class<?> apiModuleClass : apiModuleClasses) {
+				ApiModuleVO apiModuleVO = new ApiModuleVO();
+				//取得ApiModule 資訊
+				ApiModule apiModule = apiModuleClass.getAnnotation(ApiModule.class);
+				String apiModuleUrl = apiModuleClass.getAnnotation(RequestMapping.class).value()[0];
+				apiModuleVO.setValue(apiModule.value());
+				for(Method api : apiModuleClass.getMethods()) {
+					if(api.isAnnotationPresent(ApiInfo.class)) {
+						ApiInfoVO apiInfoVO = new ApiInfoVO();
+						//取得ApiInfo資訊
+						ApiInfo apiInfo = api.getAnnotation(ApiInfo.class);
+						String apiInfoUrl = api.getAnnotation(PostMapping.class).value()[0];
+						
+						//取得該Api input參數
+						Parameter[] paramArray = api.getParameters();
+						Map<String, Object> inputMap = new HashMap<>();
+						//參數分類包裝
+						for(Parameter param : paramArray) {
+							searchField(param.getType().getDeclaredFields(), inputMap);
+						}
+						apiInfoVO.setValue(apiInfo.value());
+						apiInfoVO.setDesc(apiInfo.desc());
+						apiInfoVO.setUrl(apiModuleUrl + apiInfoUrl);
+						apiInfoVO.setInputs(inputMap);
+						apiModuleVO.getApiInfoVOList().add(apiInfoVO);
+					}
+				}
+				apiVO.getApiModuleVOList().add(apiModuleVO);
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return apiVO;
+	}
+	
+	/**
+	 * 遞迴屬性判斷並放入Map 可找出多層屬性
+	 * @param fields
+	 * @param map
+	 * @return
+	 * @throws JSONException
+	 * @throws InstantiationException
+	 * @throws IllegalAccessException
+	 */
+	static private Map<String, Object> searchField(Field[] fields, Map<String, Object> map) throws JSONException, InstantiationException, IllegalAccessException {
+		for(Field field : fields) {
+			//屬性非基本類別
+			if(!field.getType().isPrimitive()) {
+				boolean isNotValueObject = 
+							String.class.isAssignableFrom(field.getType())
+						||  Number.class.isAssignableFrom(field.getType())
+						||  Boolean.class.isAssignableFrom(field.getType())
+						||  Character.class.isAssignableFrom(field.getType());
+				
+				//屬性為基本類別包裝類別
+				if(isNotValueObject) {
+					map.put(field.getName(), mapSetDefaultValue(field));
+				}
+				//屬性為Collection
+				else if(Collection.class.isAssignableFrom(field.getType())) {
+					map.put(field.getName(), mapSetDefaultValue(field));
+				}
+				//屬性為Value Object
+				else {
+					map.put(field.getName(), searchField(field.getType().getDeclaredFields(), new HashMap<>()));
+				}
+			}
+			else {
+				map.put(field.getName(), mapSetDefaultValue(field));
+			}
+		}
+		return map;
+	}
+	
+	/**
+	 * 依照屬性型別給予預設值 若為迴圈陣列則給兩個長度當作預設值
+	 * @param field
+	 * @return
+	 * @throws InstantiationException
+	 * @throws IllegalAccessException
+	 * @throws JSONException
+	 */
+	@SuppressWarnings("unchecked")
+	static private <E, T> Object mapSetDefaultValue(Field field) throws InstantiationException, IllegalAccessException, JSONException {
+		if(Collection.class.isAssignableFrom(field.getType())) {
+			
+			ParameterizedType paramType = (ParameterizedType) field.getGenericType();
+	        Class<E> typeClass = (Class<E>) paramType.getActualTypeArguments()[0];
+	        if(String.class.isAssignableFrom(typeClass)) {
+	        	return new String[] {"string", "string"};
+	        }
+	        else if(Number.class.isAssignableFrom(typeClass)) {
+	        	return new Integer[] {0, 0};
+	        }
+	        else {
+	        	//取得該class的fields 並跑迴圈將底下所有屬性RUN過
+	        	Field[] fields = typeClass.getDeclaredFields();
+	        	Object[] obj = new Object[2];
+	        	obj[0] = searchField(fields, new HashMap<>());
+	        	obj[1] = searchField(fields, new HashMap<>());
+	        	return obj;
+	        }
+		}
+		if(String.class.isAssignableFrom(field.getType())) {
+			return "string";
+		}
+		if(Number.class.isAssignableFrom(field.getType())) {
+			return 0;
+		}
+		return null;
+	}
+}

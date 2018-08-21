@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>NSCIQ Webservice</title>
+<th:block th:include="/layout/partials/head" />
+</head>
+<body>
+	<div class="layout-container">
+		<div th:replace="/layout/partials/nav"></div>
+	    <div class="main">
+	        <div layout:fragment="content" ></div>
+	    </div>
+	    <footer th:replace="/layout/partials/footer"></footer>
+    </div>
+</body>
+</html>

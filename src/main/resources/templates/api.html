@@ -1,0 +1,152 @@
+<th:block layout:decorate="layout/apiLayout">
+	<head>
+		<title>Restful API</title>
+<!-- 		<script src="/js/report.js"></script> -->
+	</head>
+	<div layout:fragment="content">
+		<div class="row">
+			<div class="col-3" id="btn-main">
+				<ul id="menu"></ul>
+			</div>
+			<div class="col-4">
+				<div class="form-group">
+					<label for="json">JSON Input</label><h4 id="apiName"></h4>
+					<textarea class="form-control" rows="20" id="jsonInput" style="background-color: #EBF7F0;"></textarea>
+				</div>
+			</div>
+			<!-- JSON -->
+			<div class="col-4">
+				<div class="form-group">
+					<label for="json">JSON Output</label>
+					<textarea class="form-control" rows="20" id="jsonOutput" style="background-color: #EBF7F0;" disabled="disabled"></textarea>
+				</div>
+			</div>
+		</div>
+		<div class="row" style="margin-top: 20px;" id="confirmBtn">
+			<div class="col-3"></div>
+			<div class="col-5">
+				<button type="button" class="btn btn-danger btn-lg btn-block" id="confirmProcess" value="" style="display: none;">確認呼叫</button>
+				<input type="hidden" id="form-val">
+			</div>
+			<div class="col-2"></div>
+		</div>
+	</div>
+</th:block>
+<script>
+var apiData;
+$(function(){
+	getApiData();
+})
+function getApiData(){
+	$.ajax({
+        url: "/apiData",
+        type: "POST",
+        async: false,
+        contentType: 'application/json; charset=utf-8',
+        success: function (data, textStatus, response) {
+        	//第一層ApiVO
+        	$.each(data, function(propertyName, apiModuleList){
+        		apiData = apiModuleList;
+        		//console.log("***********ApiVO");
+        		//console.log(apiModuleList);
+        		//第二層ApiModule
+        		$.each(apiModuleList, function(propertyName, apiModuleObject){
+        			//console.log("***********ApiModule");
+        			//console.log(apiModuleObject);
+        			//第三層ApiInfo
+        			$.each(apiModuleObject.apiInfoVOList, function(propertyName, apiInfoObject){
+        				//console.log("***********ApiInfo");
+            			//console.log(apiInfoObject);
+            		})
+        		})
+        	})
+        	
+        	//排序API WebService
+        	apiData.sort(function(a, b){
+        	  	return a.value > b.value;
+        	});
+        	//排序API method
+        	$.each(apiData, function(i, apiModuleObject) {
+        		apiModuleObject.apiInfoVOList.sort(function(a, b){
+            	  	return a.value > b.value;
+            	});
+        	});
+        	//準備Input Data
+        	apiDataPrepare(apiData);
+        	
+        },
+        error: function (errorCode) {
+            console.log(errorCode)
+        }
+    })
+}
+function apiDataPrepare(apiData){
+	$.each(apiData, function(i, apiModuleObject) {
+		//套用Jquery UI MENU
+		$("#menu").append(
+				$('<li>').append([
+					$('<div>', { text: apiModuleObject.value}),
+					$('<ul>', {id: apiModuleObject.value})
+				])
+		);
+		
+		$.each(apiModuleObject.apiInfoVOList, function(i, api) {
+			//create menu
+			$("#" + apiModuleObject.value).append(
+					$('<li>').append(
+						$('<div>', { text: api.value + '-' + api.desc, id: api.value})
+					)
+			);		
+			//綁定menu click event
+			$("#" + api.value).click(function(){
+				//快速隱藏子menu
+				$(".ui-menu ul").hide();
+				$("#confirmProcess").val(api.url);
+				$("#confirmProcess").show();
+				//API NAME
+				$("#apiName").html(api.value + "-" + api.desc);
+				$("#jsonInput").val(JSON.stringify(api.inputs, undefined, 4));
+			});
+			
+		});
+		
+	});
+	//menu start
+	$( "#menu" ).menu();
+	
+	$("#confirmProcess").bind("click", processApi);
+}
+//處理API呼叫
+function processApi() {
+	var url = $("#confirmProcess").val();
+	//formData轉換
+	var paramJson = $("#jsonInput").val();
+	$.ajax({
+		url : url,
+		type : "POST",
+		dataType : "JSON",
+		data : paramJson,
+		async : false,
+		contentType : 'application/json; charset=utf-8',
+		success : function(data, textStatus, response) {
+			console.log(data);
+			$("#jsonOutput").val(JSON.stringify(data, undefined, 4));
+		},
+		error : function(errorCode) {
+			console.log(errorCode)
+			if (errorCode.responseJSON === undefined
+					|| errorCode.responseJSON === null) {
+				swal("API的URL異常");
+			} else {
+				swal("錯誤代碼：" + errorCode.responseJSON.errCode,
+						errorCode.responseJSON.msg);
+			}
+		}
+	})
+}
+</script>
+
+
+
+
+
